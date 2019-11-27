@@ -1,0 +1,30 @@
+opam-version: "2.0"
+
+name: "advent-of-code-2019"
+version: "0.1"
+synopsis: "Solutions to Advent of Code 2019 in OCaml"
+description: "Solutions to Advent of Code 2019 in OCaml"
+
+maintainer: "Bart van Nierop <mail@bvnierop.nl>"
+authors: ["Bart van Nierop <mail@bvnierop.nl>"]
+
+homepage: "N/A"
+bug-reports: "N/A"
+
+license: "Proprietary"
+
+# build: ...
+# install: ...
+# run-test: ...
+# remove: ...
+
+depends: [
+  "tuareg"
+  "merlin"
+  "ocp-indent"
+  "utop"
+
+  "dune"
+
+  "containers"
+]
