@@ -1,2 +1,10 @@
 (executable
-  (name day1))
+  (name day1)
+  (modules Day1)
+  (preprocess (pps ppx_deriving.show)))
+
+(executable
+  (name day2)
+  (libraries containers containers.data unix ppx_deriving)
+  (modules Day2)
+  (preprocess (pps ppx_deriving.show)))
