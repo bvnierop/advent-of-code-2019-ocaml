@@ -34,11 +34,6 @@ let read_char_opt () =
 
 (* TODO: Extract above to code reuse *)
 
-(* 
-Read all memory, store as persisted array
-Walk through the memory, performing each step as we go
-*)
-
 (* Reads a number and swallow the trailing comma *)
 let read_number_opt () =
   let number = read_next_int_opt () in
@@ -70,7 +65,7 @@ type program = {
 }
 [@@deriving show]
 let program_make memory = { memory = memory; ip = 0; terminated = false }
-let program_memory program = match program.memory with Memory m -> m
+let program_output program = memory_get program.memory 0
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
 
@@ -116,11 +111,25 @@ let rec program_execute ?(verbose: bool = false) program =
     if verbose then print_endline (show_instruction instr);
     program_execute ~verbose: verbose (instruction_execute program instr)
 
-let solve_a (memory) =
+let solve_a memory =
   let faulty_memory = memory_update 2 2 (memory_update 1 12 memory) in
-  let final_state = program_execute ~verbose: true (program_make faulty_memory) in
-  print_endline (Printf.sprintf "Final value of pos 0: %d" (memory_get final_state.memory 0))
-  
+  let final_state = program_execute ~verbose: false (program_make faulty_memory) in
+  print_endline (Printf.sprintf "Final value of pos 0: %d" (program_output final_state))
+
+let solve_b memory =
+  let options = CCList.product (fun a b -> (a, b)) (CCList.range 0 99) (CCList.range 0 99) in
+  let target = 19690720 in
+  let make_memory_attempt noun verb = memory_update 2 verb (memory_update 1 noun memory) in
+  let (noun, verb) = CCList.find_pred_exn (fun (noun, verb) ->
+      let mem = make_memory_attempt noun verb in
+      let prog = program_make mem in
+      let final_state = program_execute prog in
+      target == (program_output final_state))
+    options in
+    print_endline (Printf.sprintf "100 * noun + verb = %d" (100 * noun + verb))
+      
+    
 let _ =
   let memory = read_memory () in
-  solve_a memory
+  solve_a memory;
+  solve_b memory
