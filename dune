@@ -14,3 +14,9 @@
   (libraries containers containers.data unix ppx_deriving)
   (modules Day3)
   (preprocess (pps ppx_deriving.show)))
+
+(executable
+  (name day4)
+  (libraries containers containers.data unix ppx_deriving)
+  (modules Day4)
+  (preprocess (pps ppx_deriving.show)))
