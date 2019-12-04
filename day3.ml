@@ -74,32 +74,7 @@ let instruction_of_string str =
       | _ -> failwith (Printf.sprintf "Input error: %c" dir))
 
 type point = (int * int) [@@deriving show]
-type wire_part = (point * point) [@@deriving show]
 type wire = point list [@@deriving show]
-type wire2 = wire_part list [@@deriving show]
-type line_equation = (int * int * int) [@@deriving show]
-
-let line_equation_of_points ((x1, y1), (x2, y2)) =
-  let a = y2 - y1 in
-  let b = x1 - x2 in
-  let c = a * x1 + b * y1 in
-  (a, b, c)
-
-let determinant l1 l2 =
-  let (a1, b1, _) = l1 in
-  let (a2, b2, _) = l2 in
-  a1 * b2 - a2 * b1
-
-let intersection_opt wire_part_a wire_part_b =
-  let l1 = line_equation_of_points wire_part_a in
-  let l2 = line_equation_of_points wire_part_b in
-  let det = determinant l1 l2 in
-  if det = 0 then None
-  else let (a1, b1, c1) = l1 in
-    let (a2, b2, c2) = l2 in
-    let x = (b2 * c1 - b1 * c2) / det in
-    let y = (a1 * c2 - a2 * c1) / det in
-    Some (x, y)
 
 let manhattan_distance (x1, y1) (x2, y2) =
   abs (x1 - x2) + abs (y1 - y2)
@@ -144,7 +119,26 @@ let solve_a wire_a wire_b =
   let min = list_min ~by: (fun c -> manhattan_distance c (0, 0)) common_points in
   print_endline (Printf.sprintf "Closest intersection is %s, at %d" (show_point min) (manhattan_distance min (0, 0)))
 
+module PointMap = CCMap.Make(struct type t = point let compare = Stdlib.compare end)
+
+let wire_distances wire =
+  CCList.foldi (fun acc index elem ->
+      if PointMap.mem elem acc then
+        acc
+      else
+        PointMap.add elem (index + 1) acc) PointMap.empty wire
+
+let solve_b wire_a wire_b =
+  let dist_a = wire_distances wire_a in
+  let dist_b = wire_distances wire_b in
+  let common_points = common_points wire_a wire_b in
+  let min = list_min ~by: (fun pt ->
+      PointMap.find pt dist_a + PointMap.find pt dist_b) common_points  in
+  print_endline (Printf.sprintf "Closest intersection by wire distance is %s at %d"
+                   (show_point min) (PointMap.find min dist_a + PointMap.find min dist_b))
+
 let _ =
   let wire_a = wire_of_string (read_line ()) in
   let wire_b = wire_of_string (read_line ()) in
-  solve_a wire_a wire_b
+  time (fun () -> solve_a wire_a wire_b);
+  time (fun () -> solve_b wire_a wire_b);
