@@ -4,6 +4,12 @@
   (modules Util)
   (preprocess (pps ppx_deriving.show)))
 
+(library
+  (name intCodeComputer)
+  (libraries containers containers.data unix ppx_deriving util)
+  (modules IntCodeComputer)
+  (preprocess (pps ppx_deriving.show)))
+
 (executable
   (name day1)
   (libraries containers containers.data unix ppx_deriving util)
@@ -12,8 +18,8 @@
 
 (executable
   (name day2)
-  (libraries containers containers.data unix ppx_deriving util)
-  (modules Day2 IntCodeComputer)
+  (libraries containers containers.data unix ppx_deriving util intCodeComputer)
+  (modules Day2)
   (preprocess (pps ppx_deriving.show)))
 
 (executable
@@ -26,4 +32,10 @@
   (name day4)
   (libraries containers containers.data unix ppx_deriving util)
   (modules Day4)
+  (preprocess (pps ppx_deriving.show)))
+
+(executable
+  (name day5)
+  (libraries containers containers.data unix ppx_deriving util intCodeComputer)
+  (modules Day5)
   (preprocess (pps ppx_deriving.show)))
