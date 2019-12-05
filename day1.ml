@@ -1,12 +1,4 @@
-let read_line_safe () = try Some (read_line ())
-  with End_of_file -> None
-
-let read_all_lines () =
-  let rec read acc =
-    match read_line_safe () with
-    | Some line -> read (line :: acc)
-    | None -> List.rev acc in
-  read []
+open Util
 
 let read_modules () =
   read_all_lines () |> List.map int_of_string
