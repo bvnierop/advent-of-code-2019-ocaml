@@ -58,16 +58,24 @@ type instruction =
   | Multiply of (parameter * parameter * parameter)
   | Input of parameter
   | Output of parameter
+  | JumpIfTrue of (parameter * parameter)
+  | JumpIfFalse of (parameter * parameter)
+  | LessThan of (parameter * parameter * parameter)
+  | Equals of (parameter * parameter * parameter)
   | Terminate
 [@@deriving show]
 
 let instruction_size instruction =
   match instruction with
   | Add _
+  | LessThan _
+  | Equals _
   | Multiply _ -> 4
   | Input _
   | Output _ -> 2
   | Terminate -> 1
+  | JumpIfTrue _
+  | JumpIfFalse _ -> 0
 
 let program_with_next_ip instruction program =
   { program with ip = program.ip + instruction_size instruction }
@@ -88,13 +96,33 @@ let instruction_execute_input dest program =
 let instruction_execute_output src program =
   let output_value = program_read src program in
   { program with outputs = output_value :: program.outputs }
-  
+
+let instruction_execute_jump_if cmp src dst program =
+  let value = program_read src program in
+  if cmp value = true then
+    { program with ip = program_read dst program }
+  else
+    { program with ip = program.ip + 3 }
+
+let instruction_execute_cmp cmp a b dst program =
+  let val_a = program_read a program in
+  let val_b = program_read b program in
+  let result = cmp val_a val_b in
+  program_write dst result program
+
+let instr_less_than a b = if a < b then 1 else 0
+let instr_eql a b = if a = b then 1 else 0
+
 let instruction_execute program instruction =
   let after_instruction = match instruction with
   | Add (a, b, dest) -> instruction_execute_add a b dest program
   | Multiply (a, b, dest) -> instruction_execute_multiply a b dest program
   | Input dest -> instruction_execute_input dest program
   | Output src -> instruction_execute_output src program
+  | JumpIfTrue (src, dst) -> instruction_execute_jump_if (fun v -> v != 0) src dst program
+  | JumpIfFalse (src, dst) -> instruction_execute_jump_if (fun v -> v = 0) src dst program
+  | LessThan (a, b, dst) -> instruction_execute_cmp instr_less_than a b dst program
+  | Equals (a, b, dst) -> instruction_execute_cmp instr_eql a b dst program
   | Terminate -> { program with terminated = true } in
   program_with_next_ip instruction after_instruction
 
@@ -106,17 +134,29 @@ let parse_parameter opcode n program =
   | 1 -> Immediate value
   | i -> failwith (Printf.sprintf "Invalid memory mode: %d" i)
 
+let one_parameter opcode program =
+  parse_parameter opcode 0 program
+    
+let two_parameters opcode program =
+  ((parse_parameter opcode 0 program),
+   (parse_parameter opcode 1 program))
+
+let three_parameters opcode program =
+  ((parse_parameter opcode 0 program),
+   (parse_parameter opcode 1 program),
+   (parse_parameter opcode 2 program))
+
 let next_instruction_of_program (program: program) =
   let opcode = memory_get program.memory program.ip in
   match (opcode mod 100) with 
-  | 1 -> Add((parse_parameter opcode 0 program),
-             (parse_parameter opcode 1 program),
-             (parse_parameter opcode 2 program))
-  | 2 -> Multiply((parse_parameter opcode 0 program),
-                  (parse_parameter opcode 1 program),
-                  (parse_parameter opcode 2 program))
-  | 3 -> Input (parse_parameter opcode 0 program)
-  | 4 -> Output (parse_parameter opcode 0 program)
+  | 1 -> Add (three_parameters opcode program)
+  | 2 -> Multiply (three_parameters opcode program)
+  | 3 -> Input (one_parameter opcode program)
+  | 4 -> Output (one_parameter opcode program)
+  | 5 -> JumpIfTrue (two_parameters opcode program)
+  | 6 -> JumpIfFalse (two_parameters opcode program)
+  | 7 -> LessThan (three_parameters opcode program)
+  | 8 -> Equals (three_parameters opcode program)
   | 99 -> Terminate
   | i -> (Printf.printf "Unknown opcode: %d\n" i); Terminate
 
