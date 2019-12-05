@@ -17,6 +17,7 @@ let memory_update dest value (Memory memory) =
 (* Parameters *)
 type parameter =
   | Position of int
+  | Immediate of int
 [@@deriving show]
 
 (* Program things *)
@@ -40,10 +41,12 @@ let program_update dest value program =
 let program_read parameter program =
   match parameter with
   | Position src -> memory_get program.memory src
+  | Immediate value -> value
 
 let program_write parameter value program =
   match parameter with
   | Position dst -> { program with memory = memory_update dst value program.memory }
+  | Immediate _ -> failwith "Cannot write with immediate mode"
 
 let program_next_input program =
   let (first, rest) = CCList.hd_tl program.inputs in
@@ -95,17 +98,25 @@ let instruction_execute program instruction =
   | Terminate -> { program with terminated = true } in
   program_with_next_ip instruction after_instruction
 
+let parse_parameter opcode n program =
+  let mode = (opcode / (100 * (pow 10 n))) mod 10 in
+  let value = memory_get program.memory (program.ip + n + 1) in
+  match mode with
+  | 0 -> Position value
+  | 1 -> Immediate value
+  | i -> failwith (Printf.sprintf "Invalid memory mode: %d" i)
+
 let next_instruction_of_program (program: program) =
-  let oper = memory_get program.memory program.ip in
-  match oper with
-  | 1 -> Add((Position (memory_get program.memory (program.ip + 1))),
-             (Position (memory_get program.memory (program.ip + 2))),
-             (Position (memory_get program.memory (program.ip + 3))))
-  | 2 -> Multiply((Position (memory_get program.memory (program.ip + 1))),
-                  (Position (memory_get program.memory (program.ip + 2))),
-                  (Position (memory_get program.memory (program.ip + 3))))
-  | 3 -> Input (Position (memory_get program.memory (program.ip + 1)))
-  | 4 -> Output (Position (memory_get program.memory (program.ip + 1)))
+  let opcode = memory_get program.memory program.ip in
+  match (opcode mod 100) with 
+  | 1 -> Add((parse_parameter opcode 0 program),
+             (parse_parameter opcode 1 program),
+             (parse_parameter opcode 2 program))
+  | 2 -> Multiply((parse_parameter opcode 0 program),
+                  (parse_parameter opcode 1 program),
+                  (parse_parameter opcode 2 program))
+  | 3 -> Input (parse_parameter opcode 0 program)
+  | 4 -> Output (parse_parameter opcode 0 program)
   | 99 -> Terminate
   | i -> (Printf.printf "Unknown opcode: %d\n" i); Terminate
 
