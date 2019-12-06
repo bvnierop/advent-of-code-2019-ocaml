@@ -8,13 +8,13 @@ type node = string
 type graph = {
   children: node list NodeMap.t;
   parents: node NodeMap.t;
-  nodes: NodeSet.t
+  nodes: NodeSet.t;
 }
 
 let graph_empty = {
   children = NodeMap.empty;
   parents = NodeMap.empty;
-  nodes = NodeSet.empty
+  nodes = NodeSet.empty;
 }
 
 let graph_add_edge (src: node) (dst: node) (graph: graph) =
@@ -28,16 +28,28 @@ let graph_roots graph =
     NodeSet.filter (fun n -> not (NodeMap.mem n graph.parents)) graph.nodes
     |> NodeSet.to_list
 
-let graph_foldi ~fn ~initial graph =
-  let roots = graph_roots graph in
-  let rec dive accumulator index node =
-    (* Printf.printf "dive ? %d %s\n" index node; *)
-    let next = fn accumulator index node in
-    let children = NodeMap.get_or ~default: [] node graph.children in
-    CCList.fold_left (fun acc child ->
-        dive acc (index + 1) child) next children
+let graph_neighbours node graph =
+  let children = NodeMap.get_or node ~default: [] graph.children in
+  match NodeMap.get node graph.parents with
+  | None -> children
+  | Some p -> p :: children
+
+let graph_foldi ~fn ~initial ~start graph =
+  (* let roots = graph_roots graph in *)
+  let is_seen node seen = NodeSet.mem node seen in
+  let set_seen node seen = NodeSet.add node seen  in
+  let rec dive (acc, seen) index node =
+    let next_acc = fn acc index node in
+    let next_seen = set_seen node seen in
+    let neighbours = graph_neighbours node graph in
+    CCList.fold_left (fun (acc, seen) child ->
+        if not (is_seen child seen) then
+          dive (acc, seen) (index + 1) child
+        else (acc, seen)) (next_acc, next_seen) neighbours
   in
-  CCList.fold_left (fun acc root -> dive acc 0 root) initial roots
+  dive (initial, NodeSet.empty) 0 start
+  |> (fun (acc, _seen) -> acc)
+  
 
 (* Solving the problem *)
 let read_orbit_graph () =
@@ -49,13 +61,23 @@ let read_orbit_graph () =
   |> CCList.fold_left (fun acc (src, dst) ->
       graph_add_edge src dst acc) graph_empty
 
-let solve graph =
-  graph_foldi ~fn: (fun acc idx _n -> acc + idx)
-    ~initial: 0
-    graph
-    |> string_of_int
-    |> print_endline
-    
+let solve_a graph =
+  graph_roots graph
+  |> CCList.fold_left (fun sum node ->
+      graph_foldi ~fn: (fun acc idx _n -> acc + idx)
+        ~initial: sum ~start: node graph) 0
+  |> string_of_int
+  |> print_endline
+
+let solve_b graph =
+  graph_foldi ~fn: (fun dst idx node ->
+      if node = "SAN" then idx - 2
+      else dst)
+    ~initial: 0 ~start: "YOU" graph
+  |> string_of_int
+  |> print_endline
+
 let _ =
   let graph = read_orbit_graph () in
-  time (fun () -> solve graph)
+  time (fun () -> solve_a graph);
+  time (fun () -> solve_b graph)
