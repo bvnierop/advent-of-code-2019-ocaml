@@ -1,0 +1,5 @@
+#!/bin/bash -ex
+
+source=${1:-"6.in"}
+
+dune exec ./day6.exe < ${source}
