@@ -26,7 +26,7 @@ let draw digits =
     (CCList.init (25 * 6) (fun _ -> 0))
   |> CCList.sublists_of_len 25
   |> CCList.map (fun sublist ->
-      CCList.map (fun d -> if d = 1 then "O" else " ") sublist |> CCString.concat "")
+      CCList.map (fun d -> if d = 1 then "█" else " ") sublist |> CCString.concat "")
   |> CCString.concat "\n"
   |> print_endline
 
