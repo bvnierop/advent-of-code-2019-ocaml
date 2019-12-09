@@ -15,7 +15,7 @@ let solve_one phases memory =
       let executed = program_execute program in
       executed.outputs
     ) [0] phases
-    |> CCList.hd
+  |> CCList.hd
 
 let solve memory =
   CCList.fold_left (fun hi trial ->
@@ -26,3 +26,4 @@ let solve memory =
 let _ =
   let memory = read_memory () in
   time (fun () -> solve memory)
+
