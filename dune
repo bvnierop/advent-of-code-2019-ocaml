@@ -6,7 +6,7 @@
 
 (library
   (name intCodeComputer)
-  (libraries containers containers.data unix ppx_deriving util)
+  (libraries containers containers.data gen unix ppx_deriving util)
   (modules IntCodeComputer)
   (preprocess (pps ppx_deriving.show)))
 

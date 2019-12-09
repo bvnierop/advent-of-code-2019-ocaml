@@ -11,7 +11,8 @@ let all_possible_phases =
 
 let solve_one phases memory =
   CCList.fold_left (fun outputs phase ->
-      let program = program_make ~inputs: (phase :: outputs) memory in
+      let gen = Gen.of_list (phase :: outputs) in
+      let program = program_make ~input: gen memory in
       let executed = program_execute program in
       executed.outputs
     ) [0] phases
@@ -26,4 +27,3 @@ let solve memory =
 let _ =
   let memory = read_memory () in
   time (fun () -> solve memory)
-

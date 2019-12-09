@@ -27,13 +27,14 @@ type program = {
   memory: memory;
   ip: int;
   terminated: bool;
-  inputs: inputs;
+  (* inputs: inputs; *)
+  input: int Gen.t;
   outputs: outputs;
 }
-
 [@@deriving show]
-let program_make ?(inputs = []) memory =
-  { memory = memory; ip = 0; terminated = false; inputs = inputs; outputs = [] }
+
+let program_make ?(input = Gen.empty) memory =
+  { memory = memory; ip = 0; terminated = false; input = input; outputs = [] }
 let program_output program = memory_get program.memory 0
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
@@ -49,8 +50,7 @@ let program_write parameter value program =
   | Immediate _ -> failwith "Cannot write with immediate mode"
 
 let program_next_input program =
-  let (first, rest) = CCList.hd_tl program.inputs in
-  (first, { program with inputs = rest })
+  Gen.get_exn program.input 
 
 (* Inastruction things *)
 type instruction =
@@ -90,8 +90,8 @@ let instruction_execute_multiply = instruction_make_updater ( * )
 let instruction_execute_add = instruction_make_updater ( + )
 
 let instruction_execute_input dest program =
-  let (input_value, next_state) = program_next_input program in
-  program_write dest input_value next_state
+  let input_value = program_next_input program in
+  program_write dest input_value program
 
 let instruction_execute_output src program =
   let output_value = program_read src program in
