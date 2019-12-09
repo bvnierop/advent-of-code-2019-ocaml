@@ -22,19 +22,22 @@ type parameter =
 
 (* Program things *)
 type outputs = int list [@@deriving show]
-type inputs = int list [@@deriving show]
+type run_state =
+  | Running
+  | WaitingForInput
+  | Terminated
+[@@deriving show]
 type program = {
   memory: memory;
   ip: int;
-  terminated: bool;
-  (* inputs: inputs; *)
+  run_state: run_state;
   input: int Gen.t;
   outputs: outputs;
 }
 [@@deriving show]
 
 let program_make ?(input = Gen.empty) memory =
-  { memory = memory; ip = 0; terminated = false; input = input; outputs = [] }
+  { memory = memory; ip = 0; run_state = Running; input = input; outputs = [] }
 let program_output program = memory_get program.memory 0
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
@@ -44,13 +47,22 @@ let program_read parameter program =
   | Position src -> memory_get program.memory src
   | Immediate value -> value
 
+let program_with_input_gen gen program =
+  let with_gen = { program with input = gen } in
+  match program.run_state with
+  | WaitingForInput -> { with_gen with run_state = Running }
+  | _ -> program
+
 let program_write parameter value program =
   match parameter with
   | Position dst -> { program with memory = memory_update dst value program.memory }
   | Immediate _ -> failwith "Cannot write with immediate mode"
 
 let program_next_input program =
-  Gen.get_exn program.input 
+  Gen.get program.input
+
+let program_last_output program =
+  CCList.hd program.outputs
 
 (* Inastruction things *)
 type instruction =
@@ -71,9 +83,9 @@ let instruction_size instruction =
   | LessThan _
   | Equals _
   | Multiply _ -> 4
-  | Input _
   | Output _ -> 2
   | Terminate -> 1
+  | Input _
   | JumpIfTrue _
   | JumpIfFalse _ -> 0
 
@@ -91,7 +103,10 @@ let instruction_execute_add = instruction_make_updater ( + )
 
 let instruction_execute_input dest program =
   let input_value = program_next_input program in
-  program_write dest input_value program
+  match input_value with
+  | Some value -> let next_state = program_write dest value program in
+    { next_state with ip = next_state.ip + 2 }
+  | None -> { program with run_state = WaitingForInput }
 
 let instruction_execute_output src program =
   let output_value = program_read src program in
@@ -123,7 +138,7 @@ let instruction_execute program instruction =
   | JumpIfFalse (src, dst) -> instruction_execute_jump_if (fun v -> v = 0) src dst program
   | LessThan (a, b, dst) -> instruction_execute_cmp instr_less_than a b dst program
   | Equals (a, b, dst) -> instruction_execute_cmp instr_eql a b dst program
-  | Terminate -> { program with terminated = true } in
+  | Terminate -> { program with run_state = Terminated } in
   program_with_next_ip instruction after_instruction
 
 let parse_parameter opcode n program =
@@ -162,7 +177,7 @@ let next_instruction_of_program (program: program) =
 
 let rec program_execute ?(verbose = false) ?(print_outputs = false)  program =
   if verbose then print_endline (show_program program);
-  if program.terminated then begin
+  if program.run_state != Running then begin
     if print_outputs then
       print_endline (Printf.sprintf "Program outputs: %s" (show_outputs program.outputs));
     program
