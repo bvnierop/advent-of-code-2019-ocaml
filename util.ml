@@ -32,6 +32,9 @@ let read_char_opt () =
   try Some(read_char ())
   with _ -> None
 
+let read_digit () =
+  CCString.make 1 (read_char ()) |> int_of_string
+
 let read_number_opt () =
   let number = read_next_int_opt () in
   let _ = read_char_opt () in
@@ -51,6 +54,19 @@ let list_min ~(by: 'a -> 'b) list =
   in
   let first_item = CCList.hd list in
   find_min first_item (by first_item) list
+
+let list_max ~(by: 'a -> 'b) list =
+  let rec find_max current_max current_max_value remaining =
+    match remaining with
+    | [] -> current_max
+    | x::xs -> let current_value = by x in
+      if current_value > current_max_value then
+        find_max x current_value xs
+      else
+        find_max current_max current_max_value xs
+  in
+  let first_item = CCList.hd list in
+  find_max first_item (by first_item) list
 
 let time f =
   let t = Unix.gettimeofday () in
