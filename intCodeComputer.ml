@@ -2,54 +2,54 @@ open Util
 
 (* Memory things *)
 let read_number_opt () =
-  let number = read_next_int64_opt () in
+  let number = read_next_int_opt () in
   let _ = read_char_opt () in
   number
 
-module IntMap = CCMap.Make(struct type t = int64 let compare = Int64.compare end)
-type memory = Memory of int64 IntMap.t
+module IntMap = CCMap.Make(struct type t = int let compare = Stdlib.compare end)
+type memory = Memory of int IntMap.t
 
 let read_memory () =
   read_all_opt read_number_opt
-  |> CCList.foldi (fun acc idx elt -> IntMap.add (Int64.of_int idx) elt acc) IntMap.empty
+  |> CCList.foldi (fun acc idx elt -> IntMap.add idx elt acc) IntMap.empty
   |> (fun arr -> Memory arr)
 
 let memory_get at (Memory memory) =
-  IntMap.get_or ~default: 0L at memory
+  IntMap.get_or ~default: 0 at memory
 
 let memory_update dest value (Memory memory) =
   Memory (IntMap.add dest value memory)
 
 (* Parameters *)
 type parameter =
-  | Position of int64
-  | Immediate of int64
-  | Relative of int64
+  | Position of int
+  | Immediate of int
+  | Relative of int
 [@@deriving show]
 
 (* Program things *)
-type outputs = int64 list [@@deriving show]
+type outputs = int list [@@deriving show]
 type run_state =
   | Running
   | WaitingForInput
   | Terminated
 type program = {
   memory: memory;
-  ip: int64;
-  relative_base: int64;
+  ip: int;
+  relative_base: int;
   run_state: run_state;
-  input: int64 Gen.t;
+  input: int Gen.t;
   outputs: outputs;
 }
 
 let program_make ?(input = Gen.empty) memory =
   { memory = memory;
-    ip = 0L;
-    relative_base = 0L;
+    ip = 0;
+    relative_base = 0;
     run_state = Running;
     input = input;
     outputs = [] }
-let program_output program = memory_get 0L program.memory
+let program_output program = memory_get 0 program.memory
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
 
@@ -57,7 +57,7 @@ let program_read parameter program =
   match parameter with
   | Position src -> memory_get src program.memory
   | Immediate value -> value
-  | Relative offset -> memory_get (Int64.add offset program.relative_base) program.memory
+  | Relative offset -> memory_get (offset + program.relative_base) program.memory
 
 let program_with_input_gen gen program =
   let with_gen = { program with input = gen } in
@@ -70,7 +70,7 @@ let program_write parameter value program =
   | Position dst -> { program with memory = memory_update dst value program.memory }
   | Relative offset -> { program with memory =
                                         memory_update
-                                          (Int64.add offset program.relative_base)
+                                          (offset + program.relative_base)
                                           value
                                           program.memory }
   | Immediate _ -> failwith "Cannot write with immediate mode"
@@ -100,16 +100,16 @@ let instruction_size instruction =
   | Add _
   | LessThan _
   | Equals _
-  | Multiply _ -> 4L
-  | Input _ -> 0L
-  | Output _ -> 2L
-  | Terminate -> 1L
+  | Multiply _ -> 4
+  | Input _ -> 0
+  | Output _ -> 2
+  | Terminate -> 1
   | JumpIfTrue _
-  | JumpIfFalse _ -> 0L
-  | AdjustRelativeBase _ -> 2L
+  | JumpIfFalse _ -> 0
+  | AdjustRelativeBase _ -> 2
 
 let program_with_next_ip instruction program =
-  { program with ip = Int64.add (program.ip) (instruction_size instruction) }
+  { program with ip = (program.ip) + (instruction_size instruction) }
 
 let instruction_make_updater op =
   fun a b dest program ->
@@ -117,14 +117,14 @@ let instruction_make_updater op =
   let val_b = program_read b  program in
   program_write dest (op val_a val_b) program
 
-let instruction_execute_multiply = instruction_make_updater Int64.mul
-let instruction_execute_add = instruction_make_updater Int64.add
+let instruction_execute_multiply = instruction_make_updater ( * )
+let instruction_execute_add = instruction_make_updater ( + )
 
 let instruction_execute_input dest program =
   let input_value = program_next_input program in
   match input_value with
   | Some value -> let next_state = program_write dest value program in
-    { next_state with ip = Int64.add next_state.ip 2L }
+    { next_state with ip = next_state.ip + 2 }
   | None -> { program with run_state = WaitingForInput }
 
 let instruction_execute_output src program =
@@ -136,7 +136,7 @@ let instruction_execute_jump_if cmp src dst program =
   if cmp value = true then
     { program with ip = program_read dst program }
   else
-    { program with ip = Int64.add program.ip 3L }
+    { program with ip = program.ip + 3 }
 
 let instruction_execute_cmp cmp a b dst program =
   let val_a = program_read a program in
@@ -144,12 +144,12 @@ let instruction_execute_cmp cmp a b dst program =
   let result = cmp val_a val_b in
   program_write dst result program
 
-let instr_less_than a b = if a < b then 1L else 0L
-let instr_eql a b = if a = b then 1L else 0L
+let instr_less_than a b = if a < b then 1 else 0
+let instr_eql a b = if a = b then 1 else 0
 
 let instruction_execute_adjust_relative_base by program =
   { program with relative_base =
-                   Int64.add program.relative_base (program_read by program) }
+                   program.relative_base + (program_read by program) }
 
 let instruction_execute program instruction =
   let after_instruction = match instruction with
@@ -157,8 +157,8 @@ let instruction_execute program instruction =
     | Multiply (a, b, dest) -> instruction_execute_multiply a b dest program
     | Input dest -> instruction_execute_input dest program
     | Output src -> instruction_execute_output src program
-    | JumpIfTrue (src, dst) -> instruction_execute_jump_if (fun v -> v != 0L) src dst program
-    | JumpIfFalse (src, dst) -> instruction_execute_jump_if (fun v -> v = 0L) src dst program
+    | JumpIfTrue (src, dst) -> instruction_execute_jump_if (fun v -> v != 0) src dst program
+    | JumpIfFalse (src, dst) -> instruction_execute_jump_if (fun v -> v = 0) src dst program
     | LessThan (a, b, dst) -> instruction_execute_cmp instr_less_than a b dst program
     | Equals (a, b, dst) -> instruction_execute_cmp instr_eql a b dst program
     | AdjustRelativeBase by -> instruction_execute_adjust_relative_base by program
@@ -167,7 +167,7 @@ let instruction_execute program instruction =
 
 let parse_parameter opcode n program =
   let mode = (opcode / (100 * (pow 10 n))) mod 10 in
-  let value = memory_get (Int64.add program.ip (Int64.add (Int64.of_int n) 1L)) program.memory in
+  let value = memory_get (program.ip + n + 1) program.memory in
   match mode with
   | 0 -> Position value
   | 1 -> Immediate value
@@ -187,7 +187,7 @@ let three_parameters opcode program =
    (parse_parameter opcode 2 program))
 
 let next_instruction_of_program (program: program) =
-  let opcode = Int64.to_int (memory_get program.ip program.memory) in
+  let opcode = memory_get program.ip program.memory in
   match (opcode mod 100) with 
   | 1 -> Add (three_parameters opcode program)
   | 2 -> Multiply (three_parameters opcode program)

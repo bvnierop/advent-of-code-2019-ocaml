@@ -2,7 +2,7 @@ open Util
 open IntCodeComputer
 
 let solve memory =
-  let program = program_make ~input: (Gen.singleton 1L) memory in
+  let program = program_make ~input: (Gen.singleton 1) memory in
   let executed = program_execute ~verbose: true ~print_outputs: true program in
   ignore executed
 
