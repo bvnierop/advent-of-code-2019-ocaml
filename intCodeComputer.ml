@@ -9,8 +9,9 @@ let read_memory () =
   |> CCPersistentArray.of_list
   |> (fun arr -> Memory arr)
 
-let memory_get (Memory memory) at =
+let memory_get at (Memory memory) =
   CCPersistentArray.get memory at
+
 let memory_update dest value (Memory memory) =
   Memory (CCPersistentArray.set memory dest value)
 
@@ -38,13 +39,13 @@ type program = {
 
 let program_make ?(input = Gen.empty) memory =
   { memory = memory; ip = 0; run_state = Running; input = input; outputs = [] }
-let program_output program = memory_get program.memory 0
+let program_output program = memory_get 0 program.memory
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
 
 let program_read parameter program =
   match parameter with
-  | Position src -> memory_get program.memory src
+  | Position src -> memory_get src program.memory
   | Immediate value -> value
 
 let program_with_input_gen gen program =
@@ -143,7 +144,7 @@ let instruction_execute program instruction =
 
 let parse_parameter opcode n program =
   let mode = (opcode / (100 * (pow 10 n))) mod 10 in
-  let value = memory_get program.memory (program.ip + n + 1) in
+  let value = memory_get (program.ip + n + 1) program.memory in
   match mode with
   | 0 -> Position value
   | 1 -> Immediate value
@@ -162,7 +163,7 @@ let three_parameters opcode program =
    (parse_parameter opcode 2 program))
 
 let next_instruction_of_program (program: program) =
-  let opcode = memory_get program.memory program.ip in
+  let opcode = memory_get program.ip program.memory in
   match (opcode mod 100) with 
   | 1 -> Add (three_parameters opcode program)
   | 2 -> Multiply (three_parameters opcode program)
