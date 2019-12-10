@@ -7,9 +7,6 @@ let phase_combinations_from phases =
   |> CCList.filter (fun settings ->
       let uniq = CCList.uniq ~eq: (fun a b -> a = b) settings |> CCList.length in
       uniq = 5)
-  
-
-
 
 let solve_one phases memory =
   CCList.fold_left (fun outputs phase ->
@@ -17,7 +14,7 @@ let solve_one phases memory =
       let program = program_make ~input: gen memory in
       let executed = program_execute program in
       executed.outputs
-    ) [0] phases
+    ) [0L] phases
   |> CCList.hd
 
 let solve_two phases memory =
@@ -35,16 +32,16 @@ let solve_two phases memory =
       | WaitingForInput -> run (CCFQueue.snoc (CCFQueue.tail q) executed) output
       | Running -> failwith "At this stage, program should not be 'running'"
   in
-  run queue 0
+  run queue 0L
 
 let solve phases memory solver =
   CCList.fold_left (fun hi trial ->
       max (solver trial memory) hi)
-    0 (phase_combinations_from phases)
-  |> string_of_int |> print_endline
+    0L (phase_combinations_from phases)
+  |> Int64.to_string |> print_endline
 
 
 let _ =
   let memory = read_memory () in
-  time (fun () -> solve [0;1;2;3;4] memory solve_one);
-  time (fun () -> solve [5;6;7;8;9] memory solve_two)
+  time (fun () -> solve [0L;1L;2L;3L;4L] memory solve_one);
+  time (fun () -> solve [5L;6L;7L;8L;9L] memory solve_two)

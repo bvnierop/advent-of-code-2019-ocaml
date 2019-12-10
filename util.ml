@@ -22,6 +22,13 @@ let read_next_int_opt () =
   try Some(read_next_int ())
   with _ -> None
 
+let read_next_int64 () =
+  Scanf.scanf "%Ld" (fun i -> i)
+
+let read_next_int64_opt () =
+  try Some (read_next_int64 ())
+  with _ -> None
+
 let read_all_lines () =
   read_all read_line
 
@@ -34,11 +41,6 @@ let read_char_opt () =
 
 let read_digit () =
   CCString.make 1 (read_char ()) |> int_of_string
-
-let read_number_opt () =
-  let number = read_next_int_opt () in
-  let _ = read_char_opt () in
-  number
 
 let identity x = x
 
