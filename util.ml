@@ -70,6 +70,21 @@ let list_max ~(by: 'a -> 'b) list =
   let first_item = CCList.hd list in
   find_max first_item (by first_item) list
 
+let interleave_lists lists =
+  let extract lists =
+    let (elts, remaining) = CCList.map CCList.hd_tl lists
+    |> CCList.split in
+    let cleaned = CCList.filter (fun sublist -> not (CCList.is_empty sublist)) remaining in
+    (elts, cleaned)
+  in
+  let rec extract_all acc lists =
+    match lists with
+    | [] -> acc
+    | _ -> let (elts, remaining) = extract lists in
+      extract_all (CCList.append acc elts) remaining
+  in
+  extract_all [] lists
+
 let time f =
   let t = Unix.gettimeofday () in
   let res = f () in
