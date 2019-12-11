@@ -33,14 +33,19 @@ type run_state =
   | Running
   | WaitingForInput
   | Terminated
-type program = {
+type 'a program = {
   memory: memory;
   ip: int;
   relative_base: int;
   run_state: run_state;
   input: int Gen.t;
   outputs: outputs;
+
+  output: 'a output;
+  state: 'a option;
 }
+and 'a output = int -> 'a option -> 'a program -> ('a option * 'a program)
+let program_output_nop = (fun _ state program -> (state, program))
 
 let program_make ?(input = Gen.empty) memory =
   { memory = memory;
@@ -48,10 +53,15 @@ let program_make ?(input = Gen.empty) memory =
     relative_base = 0;
     run_state = Running;
     input = input;
-    outputs = [] }
+    outputs = [];
+    output = program_output_nop;
+    state = None }
+              
 let program_output program = memory_get 0 program.memory
 let program_update dest value program =
   { program with memory = memory_update dest value program.memory }
+let program_with_output ?(initial = None) fn program =
+  { program with output = fn; state = initial }
 
 let program_read parameter program =
   match parameter with
@@ -63,7 +73,8 @@ let program_with_input_gen gen program =
   let with_gen = { program with input = gen } in
   match program.run_state with
   | WaitingForInput -> { with_gen with run_state = Running }
-  | _ -> program
+  | _ -> with_gen
+let program_add_input gen program = program_with_input_gen (Gen.append program.input gen) program
 
 let program_write parameter value program =
   match parameter with
@@ -111,14 +122,13 @@ let instruction_size instruction =
 let program_with_next_ip instruction program =
   { program with ip = (program.ip) + (instruction_size instruction) }
 
-let instruction_make_updater op =
-  fun a b dest program ->
-  let val_a = program_read a  program in
-  let val_b = program_read b  program in
+let instruction_updater op a b dest program =
+  let val_a = program_read a program in
+  let val_b = program_read b program in
   program_write dest (op val_a val_b) program
 
-let instruction_execute_multiply = instruction_make_updater ( * )
-let instruction_execute_add = instruction_make_updater ( + )
+let instruction_execute_multiply a b dest program = instruction_updater ( * ) a b dest program
+let instruction_execute_add a b dest program = instruction_updater ( + ) a b dest program
 
 let instruction_execute_input dest program =
   let input_value = program_next_input program in
@@ -129,7 +139,8 @@ let instruction_execute_input dest program =
 
 let instruction_execute_output src program =
   let output_value = program_read src program in
-  { program with outputs = output_value :: program.outputs }
+  let (next_ext_state, next_program_state) = program.output output_value program.state program in
+  { next_program_state with outputs = output_value :: program.outputs; state = next_ext_state }
 
 let instruction_execute_jump_if cmp src dst program =
   let value = program_read src program in
@@ -186,7 +197,7 @@ let three_parameters opcode program =
    (parse_parameter opcode 1 program),
    (parse_parameter opcode 2 program))
 
-let next_instruction_of_program (program: program) =
+let next_instruction_of_program program =
   let opcode = memory_get program.ip program.memory in
   match (opcode mod 100) with 
   | 1 -> Add (three_parameters opcode program)
