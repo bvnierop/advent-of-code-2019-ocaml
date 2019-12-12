@@ -49,11 +49,15 @@ end
 
 module Moon = struct
   module Make(MP: MOON_POSITION) = struct
+    type pos = MP.t
     type t = {
-      position: MP.t;
-      velocity: MP.t;
+      position: pos;
+      velocity: pos;
     } 
     type moon_list = t list 
+    let position moon = moon.position
+    let velocity moon = moon.velocity
+
     let apply_gravity gravity moon =
       { moon with velocity = MP.add moon.velocity gravity }
 
@@ -85,6 +89,7 @@ module Moon = struct
               empty_velocity moons in
           apply_gravity gravity moon) moons
       |> CCList.map step
+
   end
 end
 
@@ -101,6 +106,31 @@ let solve moons step_count =
   |> CCList.fold_left (+) 0
   |> string_of_int |> print_endline
 
+let find_cycle moons =
+  let eq m1 m2 =
+    OneDMoon.position m1 = OneDMoon.position m2 && OneDMoon.velocity m1 = OneDMoon.velocity m2 in
+  let eql l1 l2 = CCList.fold_left2 (fun acc a b -> if not (eq a b) then false else acc)
+      true l1 l2 in
+  let rec find state cycles =
+    if eql state moons then cycles
+    else find (OneDMoon.step state) (cycles + 1) in
+  find (OneDMoon.step moons) 1
+
+let solve_b_for ~(selector: ThreeDMoon.pos -> OneDMoon.pos) (moons: ThreeDMoon.t list) =
+  let one_d = CCList.map
+      (fun moon -> { OneDMoon.position = selector (ThreeDMoon.position moon); velocity = selector (ThreeDMoon.velocity moon) })
+      moons in
+  find_cycle one_d
+
+let solve_b moons =
+  let x = solve_b_for ~selector: (fun vec -> vec.x) moons in
+  let y = solve_b_for ~selector: (fun vec -> vec.y) moons in
+  let z = solve_b_for ~selector: (fun vec -> vec.z) moons in
+  lcm x (lcm y z)
+  |> string_of_int |> print_endline
+
 let _ =
   let moons = read_input () in
-  time (fun () -> solve moons 1000)
+  time (fun () -> solve moons 1000);
+  time (fun () -> solve_b moons)
+

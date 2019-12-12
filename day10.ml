@@ -8,9 +8,6 @@ type angle_and_point = (float * coordinate) [@@deriving show]
 type angle_and_point_list = angle_and_point list [@@deriving show]
 type angle_and_point_grouped_list =  angle_and_point_list list [@@deriving show]
 
-let rec gcd a b =
-  if b = 0 then a else gcd b (a mod b)
-
 let normalize coord =
   let (x, y) = coord in
   if x = 0 && y = 0 then (0, 0)

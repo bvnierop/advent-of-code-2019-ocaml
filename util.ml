@@ -104,3 +104,11 @@ let pow base exponent =
     | e when is_even e -> aux accumulator (base * base) (e / 2)
     | e -> aux (base * accumulator) (base * base) ((e - 1) / 2) in
   aux 1 base exponent
+
+let rec gcd a b =
+  if b = 0 then a else gcd b (a mod b)
+
+let lcm a b =
+  match a, b with
+  | 0, _ | _, 0 -> 0
+  | a, b -> abs (a * b) / (gcd a b)
