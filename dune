@@ -81,3 +81,9 @@
   (libraries containers containers.data gen unix ppx_deriving util)
   (modules Day12)
   (preprocess (pps ppx_deriving.show)))
+
+(executable
+  (name day13)
+  (libraries containers containers.data gen unix ppx_deriving util intCodeComputer)
+  (modules Day13)
+  (preprocess (pps ppx_deriving.show)))
