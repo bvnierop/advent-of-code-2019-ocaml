@@ -112,3 +112,10 @@ let lcm a b =
   match a, b with
   | 0, _ | _, 0 -> 0
   | a, b -> abs (a * b) / (gcd a b)
+
+let div_ceil n d =
+  let quotient = (n + d - 1) / d in
+  let remainder = n mod d in
+  if remainder = 0 then (quotient, remainder)
+  else (quotient, 0 - d + remainder)
+(* let div_ceil n d = (((n+d-1) / d), -(d - (n mod d))) *)
