@@ -15,7 +15,8 @@ module Reaction = struct
   type lookup = lookup_entry StringMap.t
 
   let empty_bag = StringMSet.empty
-  let fuel_bag = StringMSet.add StringMSet.empty "FUEL"
+  let fuel_bag n = StringMSet.add_mult StringMSet.empty "FUEL" n
+
   let multiply_bag times bag =
     StringMSet.to_list_mult bag
     |> CCList.map (fun (chem, count) -> (chem, count * times))
@@ -95,17 +96,34 @@ module Reaction = struct
 
 end
 
-
 let read_reactions () =
   read_all Reaction.read
 
 let solve reactions =
   let lookup = Reaction.make_lookup reactions in
   Reaction.ore_needed ~have: Reaction.empty_bag
-    ~goal: Reaction.fuel_bag
+    ~goal: (Reaction.fuel_bag 1)
     lookup 0
   |> string_of_int |> print_endline
 
+let rec bin_search_max_below ~value ~lo ~hi f =
+  if lo = hi then (lo, f lo)
+  else
+    let mid = lo + 1 + ((hi - (lo + 1)) / 2) in
+    let result = f mid in
+    if result > value then bin_search_max_below ~value: value ~lo: lo ~hi: (mid - 1) f
+    else bin_search_max_below ~value: value ~lo: mid ~hi: hi f
+
+let solve_b reactions max_ore =
+  let lookup = Reaction.make_lookup reactions in
+  let f = (fun amt -> Reaction.ore_needed ~have: Reaction.empty_bag
+              ~goal: (Reaction.fuel_bag amt)
+              lookup 0) in
+  bin_search_max_below ~value: max_ore ~lo: 0 ~hi: max_ore f
+  |> (fun (fuel, ore) -> Printf.printf "%d Fuel takes %d ore\n" fuel ore)
+  
+
 let _ =
   let reactions = read_reactions () in
-  time (fun () -> solve reactions)
+  time (fun () -> solve reactions);
+  time (fun () -> solve_b reactions 1000000000000)
