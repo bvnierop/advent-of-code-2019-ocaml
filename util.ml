@@ -118,4 +118,17 @@ let div_ceil n d =
   let remainder = n mod d in
   if remainder = 0 then (quotient, remainder)
   else (quotient, 0 - d + remainder)
-(* let div_ceil n d = (((n+d-1) / d), -(d - (n mod d))) *)
+
+let pp_list ?(start="") ?(stop="") ?(sep=", ") pp_item fmt l =
+  let rec print fmt l = match l with
+    | x::((_::_) as l) ->
+      pp_item fmt x;
+      Format.pp_print_string fmt sep;
+      Format.pp_print_cut fmt ();
+      print fmt l
+    | x::[] -> pp_item fmt x; Format.pp_print_cut fmt ()
+    | [] -> ()
+  in
+  Format.pp_print_string fmt start;
+  print fmt l;
+  Format.pp_print_string fmt stop
