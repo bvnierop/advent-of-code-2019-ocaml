@@ -33,10 +33,47 @@ let solve digits =
   let first_eight = CCList.take 8 after_phase in
   CCFormat.printf "%a@." (pp_list ~sep: "" CCInt.pp) first_eight
 
+
+let offset digits =
+  let offset_digits = CCList.take 7 digits in
+   CCList.fold_left (fun o digit -> o * 10 + digit) 0 offset_digits
+
+(*
+Observation:
+     The offset is larger than half the length of the signal
+     The pattern ensures we can just sum from the back
+     
+These observations mean we can simply ignore the first half (leave it 0)
+and only calculate the second half. In fact, we only have to calculate
+from the back up to offset.
+*)
+let phase_backwards_sum digits =
+  (*
+  8 7 6 5 ->
+        [] 0 8 -> [8] 8
+        [8] 8 7 -> [8, 5] 15
+        [8, 5] ...
+  *)
+  let (digits, _) = CCList.fold_left (fun (new_list, partial_sum) digit ->
+      let new_sum = partial_sum + digit in
+      ((new_sum mod 10) :: new_list, new_sum)) ([], 0) (CCList.rev digits) in
+  digits
+
+let solve_b digits =
+  let offset = offset digits in
+  (* let offset = 4 in *)
+  let digits = CCList.repeat 10000 digits in
+  let sublist = CCList.drop offset digits in
+  Gen.fold (fun state _ -> phase_backwards_sum state) sublist (Gen.int_range 0 99)
+  (* phase_backwards_sum sublist
+   * |> phase_backwards_sum *)
+  |> (fun list -> CCFormat.printf "%a@." (pp_list ~sep: "" CCInt.pp) (CCList.take 8 list))
+  
 let read_digits () =
   read_all read_digit
 
 let _ =
   let digits = read_digits () in
-  time (fun () -> solve digits)
+  time (fun () -> solve digits);
+  time (fun () -> solve_b digits)
 
