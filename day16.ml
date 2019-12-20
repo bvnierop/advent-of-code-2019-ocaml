@@ -61,12 +61,9 @@ let phase_backwards_sum digits =
 
 let solve_b digits =
   let offset = offset digits in
-  (* let offset = 4 in *)
   let digits = CCList.repeat 10000 digits in
   let sublist = CCList.drop offset digits in
   Gen.fold (fun state _ -> phase_backwards_sum state) sublist (Gen.int_range 0 99)
-  (* phase_backwards_sum sublist
-   * |> phase_backwards_sum *)
   |> (fun list -> CCFormat.printf "%a@." (pp_list ~sep: "" CCInt.pp) (CCList.take 8 list))
   
 let read_digits () =
