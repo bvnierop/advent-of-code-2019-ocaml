@@ -47,14 +47,14 @@ type 'a program = {
 and 'a output = int -> 'a option -> 'a program -> ('a option * 'a program)
 let program_output_nop = (fun _ state program -> (state, program))
 
-let program_make ?(input = Gen.empty) memory =
+let program_make ?(input = Gen.empty) ?(output = program_output_nop) memory =
   { memory = memory;
     ip = 0;
     relative_base = 0;
     run_state = Running;
     input = input;
     outputs = [];
-    output = program_output_nop;
+    output = output;
     state = None }
               
 let program_output program = memory_get 0 program.memory
