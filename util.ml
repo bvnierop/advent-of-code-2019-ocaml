@@ -88,8 +88,9 @@ let interleave_lists lists =
 let time f =
   let t = Unix.gettimeofday () in
   let res = f () in
-  Printf.printf "Execution time: %f seconds\n"
+  Printf.printf "Execution time: %f seconds"
                 (Unix.gettimeofday () -. t);
+  print_endline "";
   res
 
 let is_even n = 
